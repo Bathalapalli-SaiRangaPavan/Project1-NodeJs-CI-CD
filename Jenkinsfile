@@ -4,7 +4,7 @@ pipeline {
             label "nodeslave"
         }
     }
-    tools {nodejs "nodejs-16"}
+    tools {nodejs "node-js"}
     stages{
         stage ("clone the code"){
             steps{
@@ -15,6 +15,12 @@ pipeline {
         stage ("Build the code"){
             steps{
                 sh "npm install"
+            }
+        }
+
+        stage ("Unit test"){
+            steps{
+                sh "npm test"
             }
         }
     }
