@@ -1,3 +1,7 @@
+def registry = "https://bsairangapavan.jfrog.io/"
+def imageName = "bsairangapavan.jfrog.io/nodecicd-docker/newimagenodeversion" 
+def version   = "1.0.0"
+
 pipeline {
     agent{
         node {
@@ -23,5 +27,21 @@ pipeline {
                 sh "npm test"
             }
         }
+        stage(" Docker Build ") {
+            steps {
+                script {
+                    app = docker.build(imageName+":"+version)
+                }
+            }
+        }
+        stage (" Docker Publish "){
+            steps {
+                script { 
+                   docker.withRegistry(registry, 'Jfrog-token'){
+                      app.push()
+                    }    
+                }
+            }
+        }  
     }
 }
