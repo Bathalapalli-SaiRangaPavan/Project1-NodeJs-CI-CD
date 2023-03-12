@@ -1,4 +1,6 @@
-
+def registry = "https://bsairangapavan.jfrog.io/"
+def imageName = "bsairangapavan.jfrog.io/nodebuild-docker/newimageversion" 
+def version   = "1.0.0"
 pipeline {
     agent{
         node {
