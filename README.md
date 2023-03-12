@@ -591,4 +591,12 @@ sudo docker images
 - Click (Build Now)
 
 
+![nodeci](https://user-images.githubusercontent.com/121741348/224545297-9b21d0d9-9245-49e3-9101-9aabd52babc2.png)
+
+
+##### Check images in Build-server
+```
+sudo docker images 
+```
+![image](https://user-images.githubusercontent.com/121741348/224545559-bebc40d4-de1d-4e19-83ee-847ff822c55b.png)
 
