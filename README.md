@@ -3,10 +3,11 @@
 This repository contains a project where I’ve managed to create a Build & Deployment for a Node.js app.
 
 - Step 1 - Create an instance named Jenkins-Server and login to the server. Make sure you open port 8080. Install git, install Java, and Jenkins in /opt, and access Jenkins GUI.
-- Step 2 - Create an instance named Build-Server and login to the server. Install git, install Java, npm, docker, eksctl in /opt on build-server.
-
-
-
+- Step 2 - Create an instance named Build-Server and login to the server. Install git, install Java, npm, docker, eksctl in /opt on build-server
+- Step 3 - Master - Slave Configuration 
+- Step 4 - Jfrog Account creation. Generate a token in Jfrog and configure the token in Jenkins GUI 
+- Step 5 - Install the nodejs plugin, artifactory plugin, Docker pipeline plugin in Jenkins GUI
+- Step 6 - Configure nodejs in Global tool Configuration
 
 ## Step 1 - Create an instance named Jenkins-Server and login to the server. Make sure you open port 8080. Install git, install Java, and Jenkins in /opt, and access Jenkins GUI.
 
@@ -126,9 +127,15 @@ docker info
 ```
 chmod 777 /var/run/docker.sock
 ```
+```
+cd ~
+```
+```
+exit
+```
 
 
-### Install eksctl
+### Install eksctl as ec2-user. In Master and Slave Configuration, I have given the remote root directory (/home/ec2-user/jenkins).
 
 - Install - AWS CLI 
 
@@ -222,8 +229,155 @@ Validate cluster by checking the nodes
 kubectl get nodes
 ```
 
+### Step 3 - Master - Slave Configuration 
+
+- Note - I am not running jobs on the Jenkins-Master server. I am running jobs on Build-Server.
+##### Add Slave (Build-Server) credentials
+- Click (Manage Jenkins) 
+- Click (Manage Credentials) 
+###### Under Stores scoped to Jenkins
+- Click (global)
+###### Global credentials (unrestricted)
+- Click (+ Add Credentials) 
+- Kind (SSH username with private key)
+- Scope (Global(jenkins,nodes,items,all child items, etc)
+- id -  Jenkins-slave
+- Username - ec2-user
+##### Private key 
+- Click (Enter directly)
+- Click (ADD) 
+- (Give private key of Instance which is .pem file) 
+- Click (create) 
+
+### Add Build-Server as a permanent slave to Jenkins-Server  
+
+- Click (Manage Jenkins)
+- Click (Manage Nodes and Clouds) 
+- Click (New Node) 
+- Node name - Jenkins-slave
+- Click (Permanent Agent) 
+- Number of executors (2)
+- Remote root directory (/home/ec2-user/jenkins)
+- ***Lables (nodeslave) # This should be given in the pipeline
+
+##### Launch method
+- (Launch agent via ssh) 
+- Usage (only build jobs with label expressions matching this node) 
+- Host (Private Ip of Build-Server) 
+- Credentials - (ec2-user)
+- Host Key Verification Strategy - (Non verifyng Verification strategy) 
+- Click (save) 
+
+##### Now write the Declarative Pipeline Script, and the code looks like the below:
+
+```
+pipeline{
+    agent{
+        node{
+            label "nodeslave"
+        }
+    }
+}
+```
+
+
+
+### Step 4 - Jfrog Account Creation (One Time procedure)
+
+- Search - https://jfrog.com
+- Select (products - JFROG Artifactory) 
+- Select (Free Trial)
+- Select (Skip Trial and Start with a Free JFrog Instance)
+- Select (Sign Up with Github) 
+- Select (Authorize GH-prod-SSO)
+
+- Create a Hostname* - (give any name) 
+- Give Your First Name, Last Name
+- Hosting Preferences (aws)
+- Click (Try It Now) 
+
+##### It will ask for Sign in 
+- Select (github) 
+- Select (Authorize GH-prod-SSO)
+
+- Select (Lets Go)
+- What is the purpose of this JFrog account? (Personal)
+- Seect Your Role (DevOps Engineer) 
+- What are you interested in? (CI/CD) # Select your choices
+
+- Note - Next time onwards u login with github when it asks signin
+
+### Generate token
+
+- Select (User menu) # Your profile name
+- Select (New user) 
+- Select (Access token) # under user management
+- Select (+ Generate token) 
+
+##### Generate Token 
+- Select - (Scoped Token)
+- Description - (Demo-token) # Give any meaningful name 
+- Token Scope - (Admin) # As per your specification
+- User name - (Your mail id which is connected with github account) 
+- Expiration time - # Depends on you - Example: Never
+- Click (Generate) 
+
+###### You will get a token. Copy that token. Copy the generated token into Jenkins. Go to Jenkins Gui
+
+- Click (Manage Jenkins) 
+- Click (Manage Credentials) 
+##### Under Stores scoped to Jenkins
+- Click (System) 
+- Click (Global credentials (unrestricted))
+- Click (Add Credentials) 
+###### kind (Username with password) 
+- username (your mail id which u connected with github) 
+- Password (Generated token from jfrog paste here) 
+- ID - Jfrog-token  #ID is must. Do remember because we give this in pipeline
+- Click (Create) 
 
 
 
 
+### Step 5 - Install the nodejs plugin, artifactory plugin, Docker pipeline plugin in Jenkins GUI.
+
+##### Install nodejs plugin 
+
+- Click (Manage Jenkins)
+- Click (install plugins)
+- Click (Available Plugins) - Search ('NodeJs') 
+- Click ('NodeJs') 
+- Click (Install without Restart)
+
+##### Install Docker pipeline plugin
+
+- Click (Manage Jenkins) 
+- Click (Manage Plugins) 
+- Select (Available Plugins) 
+- Search (Docker Pipeline) 
+- Select (Docker Pipeline)
+- Select (Install without restart) 
+
+
+##### Install Artifactary Plugin
+
+- Click (Manage Jenkins) 
+- Click (Manage Plugins) 
+- Select (Available Plugins) 
+- Search (Artifactory) 
+- Select (Artifactory)
+- Select (Install without restart) 
+
+### Step 6 - Configure nodejs in Global tool Configuration
+
+- Click (Dashboard)
+- Click (Manage Jenkins) 
+- Click (Global tool configuration)
+###### Under NodeJs
+- Click (Add Nodejs) 
+- Name (node-js) #Same name should be given the pipeline code - tools {nodejs "node-js"}
+- version (NodeJs-16.6.0)
+- Select (Install automatically)
+- Click (Apply)
+- Click (Save)
 
