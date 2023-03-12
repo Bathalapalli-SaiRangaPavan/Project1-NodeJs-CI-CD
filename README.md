@@ -8,6 +8,8 @@ This repository contains a project where I’ve managed to create a Build & Depl
 - Step 4 - Jfrog Account creation. Generate a token in Jfrog and configure the token in Jenkins GUI 
 - Step 5 - Install the nodejs plugin, artifactory plugin, Docker pipeline plugin in Jenkins GUI
 - Step 6 - Configure nodejs in Global tool Configuration
+- Step 7 - Create a dedicated user to use for a Docker login in Jfrog 
+- Step 8 - Create a  Continuous Integration pipeline
 
 ## Step 1 - Create an instance named Jenkins-Server and login to the server. Make sure you open port 8080. Install git, install Java, and Jenkins in /opt, and access Jenkins GUI.
 
@@ -376,8 +378,217 @@ pipeline{
 ###### Under NodeJs
 - Click (Add Nodejs) 
 - Name (node-js) #Same name should be given the pipeline code - tools {nodejs "node-js"}
-- version (NodeJs-16.6.0)
+- Version (NodeJs-16.6.0)
 - Select (Install automatically)
 - Click (Apply)
 - Click (Save)
+
+## Write a declarative pipeline for each stage.
+- Note - Fork the repository then change wherever i mentioned
+#### Stage 1 - Clone the code from github repository 
+```
+pipeline {
+    agent{
+        node {
+            label "nodeslave"
+        }
+    }
+    stages{
+        stage ("clone the code"){
+            steps{
+                git branch: 'main', url: 'https://github.com/Bathalapalli-SaiRangaPavan/NodeJs-Project1-CI-CD.git'#https://github.com/<give your name>/NodeJs-Project1-CI-CD.git
+            }
+        }
+    }
+}
+```
+
+##### Stage 2 - Build the code
+```
+pipeline {
+    agent{
+        node {
+            label "nodeslave"
+        }
+    }
+    tools {nodejs "node-js"}
+    stages{
+        stage ("clone the code"){
+            steps{
+                git branch: 'main', url: 'https://github.com/Bathalapalli-SaiRangaPavan/NodeJs-Project1-CI-CD.git' #https://github.com/<give your name>/NodeJs-Project1-CI-CD.git
+            }
+        }
+       
+        stage ("Build the code"){
+            steps{
+                sh "npm install"
+            }
+        }
+    }
+}
+```
+
+##### Stage 3 - Unit testing 
+
+```
+pipeline {
+    agent{
+        node {
+            label "nodeslave"
+        }
+    }
+    tools {nodejs "node-js"}
+    stages{
+        stage ("clone the code"){
+            steps{
+                git branch: 'main', url: 'https://github.com/Bathalapalli-SaiRangaPavan/NodeJs-Project1-CI-CD.git' #https://github.com/<give your name>/NodeJs-Project1-CI-CD.git
+            }
+        }
+       
+        stage ("Build the code"){
+            steps{
+                sh "npm install"
+            }
+        }
+
+        stage ("Unit test"){
+            steps{
+                sh "npm test"
+            }
+        }
+    }
+}
+```
+
+
+###### Create a Dockerfile 
+
+```
+FROM node
+WORKDIR /app
+ADD . /app
+RUN npm install
+EXPOSE 3000
+CMD npm start
+```
+
+
+##### Create a Docker Artifactory in Jfrog 
+
+###### Once u login to Jfrog u can able to see left side (Artifactory, Xray, Distribution, Pipelines, Integrations) 
+- Select (Artifactory)
+- Select (Quick SetUp)
+- Now You can able to see Available package types (docker)
+- Repositories prefix  (nodebuild)
+- Click (Create)
+
+- Click on (Artifactory) # U can able to (quick setup, Repositories, Packages, Artifacts, Build) 
+- Select (Artifacts) 
+###### Now u can able to see nodebuild-docker, nodebuild-docker-local, nodebuild-docker-remote, nodebuild-docker-remote-cache
+###### when u click on nodebuild-docker-local u cannot able to see any folder 
+
+
+##### Stage 4 - Docker build & Docker Publish 
+```
+def registry = "https://bsairangapavan.jfrog.io/" ### "https://your.jfrog.io
+def imageName = "bsairangapavan.jfrog.io/nodebuild-docker/newimageversion" ### "your.jfrog.io/yourrepositoryprfix/yourpreferredimagename
+def version   = "1.0.0"    ### Image version i defined 1.0.0
+pipeline {
+    agent{
+        node {
+            label "nodeslave"
+        }
+    }
+    tools {nodejs "node-js"}
+    stages{
+        stage ("clone the code"){
+            steps{
+                git branch: 'main', url: 'https://github.com/Bathalapalli-SaiRangaPavan/NodeJs-Project1-CI-CD.git'   #https://github.com/<give your name>/NodeJs-Project1-CI-CD.git
+            }
+        }
+       
+        stage ("Build the code"){
+            steps{
+                sh "npm install"
+            }
+        }
+
+        stage ("Unit test"){
+            steps{
+                sh "npm test"
+            }
+        }
+        stage(" Docker Build ") {
+            steps {
+                script {
+                    app = docker.build(imageName+":"+version)
+                }
+            }
+        }
+        stage (" Docker Publish "){
+            steps {
+                script { 
+                   docker.withRegistry(registry, 'Jfrog-token'){              #### I given Jfrog-token. Instead whaterver you defined give here.
+                      app.push()
+                    }    
+                }
+            }
+        }  
+    }
+}
+```
+###### when u click on nodebuild-docker-local u can able to see 1.0.0
+
+### Step 7 - Create a dedicated user to use for a Docker login in Jfrog 
+
+- Login to your Jfrog Account
+- Select (User Menu)  #Your profile name
+- Click (New User) 
+- username (dockerjfrog) # give anyname
+- Email Address (give your email address) 
+- Select (Administrater Platform) 
+- Password (give your password) 
+- Confirm Password (give your password)
+- Click (save) 
+
+
+###### Go to Build server and login into your jfrog account. 
+```
+sudo docker login bsairangapavan.jfrog.io  # login (give your.jfrog.io)
+```
+###### it will ask credentials 
+```
+username - dockerjfrog # (give your email address) 
+```
+```
+password - (give your password) 
+```
+##### Login succeeded
+##### whenever u login to jfrog repository the credentials will be stored in the /root/.docker/config.json 
+```
+sudo cat /root/.docker/config.json 
+```
+# Check the images
+```
+sudo docker images 
+```
+
+### Step 8 - Create a  Continuous Integration pipeline
+##### Login Jenkins Gui
+- Click (New Item) 
+- Click (Pipeline)
+- Name (nodejs-ci)
+- Click (Ok)
+##### Under Pipeline - Defination
+- Select (Pipelinescript from SCM)
+- SCM (git) 
+- Repository URL - (https://github.com/Bathalapalli-SaiRangaPavan/NodeJs-Project1-CI-CD.git)  
+- Credentials (None) # As its a public repository 
+##### Branches to build
+- Branch Specifier - (*/main)
+- Click (Apply) 
+- Click (Save) 
+- Click (Build Now)
+
+
 
