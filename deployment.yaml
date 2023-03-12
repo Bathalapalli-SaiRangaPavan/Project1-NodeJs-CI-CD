@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodejs-cicd-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nodejs-cicd
+  template:
+    metadata:
+      labels:
+        app: nodejs-cicd
+    spec:
+      imagePullSecrets:
+      - name: dockerjfrog 
+      containers:
+      - name:  nodejs-cicd
+        image: bsairangapavan.jfrog.io/nodebuild-docker/newimageversion:1.0.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
