@@ -1,3 +1,229 @@
 # NodeJs-Project1-CI-CD
 
 This repository contains a project where I’ve managed to create a Build & Deployment for a Node.js app.
+
+- Step 1 - Create an instance named Jenkins-Server and login to the server. Make sure you open port 8080. Install git, install Java, and Jenkins in /opt, and access Jenkins GUI.
+- Step 2 - Create an instance named Build-Server and login to the server. Install git, install Java, npm, docker, eksctl in /opt on build-server.
+
+
+
+
+## Step 1 - Create an instance named Jenkins-Server and login to the server. Make sure you open port 8080. Install git, install Java, and Jenkins in /opt, and access Jenkins GUI.
+
+- Become root user
+```
+sudo su - 
+```
+
+### Install Git
+```
+yum install git -y
+```
+- Note - When your installing 3rd party softwares. It is recommended to use opt directory
+```
+cd /opt 
+```
+### Install Java
+```
+amazon-linux-extras install java-openjdk11 -y
+```
+- Check Java version 
+```
+java -version
+```
+### Install Jenkins 
+```
+wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
+```
+```
+rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io.key
+```
+```
+yum install jenkins -y
+```
+```
+service jenkins start
+```
+#### Access the Jenkins Gui 
+- Browse - giveurjenkinsserverip:8080 
+
+##### once u access it will ask password. Execute below command in Jenkins-Server 
+```
+cat /var/lib/jenkins/secrets/initialAdminPassword
+```
+##### Take password and paste in the Jenkins Gui
+
+- Select (install suggested plugins)
+
+#### Create First Admin User
+- Note: I have given random. Give according to your convinience.
+- username: admin 
+- password: password
+- confirm password: password 
+- Full name: Pavan
+- Email-address: admin@gmail.com  
+- Click (save & continue) 
+- Click (save & finish)
+- Click (start using jenkins)
+
+#### Now start using Jenkins 
+
+## Step 2 - Create an instance named Build-Server and login to the server. Install git, install Java, npm, docker, eksctl in /opt on build-server.
+
+- Become root user
+```
+sudo su - 
+```
+### Install Git
+```
+yum install git -y
+```
+- Note - When your installing 3rd party softwares. It is recommended to use opt directory
+```
+cd /opt 
+```
+### Install Java
+```
+amazon-linux-extras install java-openjdk11 -y
+```
+- Check Java version 
+```
+java -version
+```
+### Install npm
+- Reference - Install npm - https://docs.aws.amazon.com/sdk-for-javascript/v2/developer-guide/setting-up-node-on-ec2-instance.html
+
+```
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.3/install.sh | bash
+```
+```
+. ~/.nvm/nvm.sh
+```
+```
+nvm install 16
+```
+- To check version 
+```
+node -e "console.log('Running Node.js ' + process.version)"
+```
+
+### Install Docker 
+```
+yum install docker -y
+``` 
+```
+service docker start
+```
+```
+service docker status
+```
+- To confirm weather docker service is running or not 
+```
+docker info  
+```
+- Docker should have permissions to /var/run/docker.sock
+
+```
+chmod 777 /var/run/docker.sock
+```
+
+
+### Install eksctl
+
+- Install - AWS CLI 
+
+```
+aws --version
+```
+ - By default you can able to see aws cli as we r using amazon linux ```aws-cli/2.10.0 Python/3.9.11 Linux/5.10.165-143.735.amzn2.x86_64 exe/x86_64.amzn.2 prompt/off```
+
+- Set Up kubectl - https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html
+
+```
+curl -O https://s3.us-west-2.amazonaws.com/amazon-eks/1.23.16/2023-01-30/bin/linux/amd64/kubectl
+```
+Execution Permissions
+```
+chmod +x ./kubectl
+```
+Move kubectl to Usr local bin
+```
+sudo mv ./kubectl /usr/local/bin
+```
+Check the kubectl version 
+```
+kubectl version --short --client
+```
+
+- Set Up eksctl - https://docs.aws.amazon.com/eks/latest/userguide/eksctl.html
+```
+curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+```
+```
+sudo mv /tmp/eksctl /usr/local/bin
+```
+```
+eksctl version
+```
+### Create an IAM Role and attach it to EC2 instance
+
+- Go to AWS Management Console 
+- Click (Services) 
+- Search (IAM) 
+- Click (Roles)
+- Click (Create role)
+##### Select trusted entity
+- Select (Aws Service) 
+##### Use case 
+- Select (EC2) # we are attaching to ec2 
+- Click (Next) 
+##### Add permissions
+##### Search 
+- Filter Policies (IAM Full Access) Select (IAM Full Access) (Provides full access to IAM via the AWS Management Console.)
+- Filter Policies (Cloud Formation) Select (AWSCloudFormationFullAccess) (Provides full access to AWS CloudFormation.)
+- Filter Policies (VPC) Select (AmazonVPCFullAccess) (Provides full access to Amazon VPC via the AWS Management Console.)
+- Filter Policies (EC2) Select (AmazonEC2FullAccess) (Provides full access to Amazon EC2 via the AWS Management Console.)
+- Filter Policies (Administrator) Select (AdministratorAccess) (Provides full access to AWS services and resources.)
+- Click (Next)
+##### Role name
+- Enter a meaningful name to identify this role (bootstrap_role)
+- Click (Create Role)
+
+### Now Attach It To Ec2 Instance
+
+- Go to AWS Management Console 
+- Click (Services) 
+- Search (EC2) 
+- Select (Server) # Where we installed awscli, kubectl
+- Select (Actions) 
+- Click (Security) 
+- Click (Modify IAM Role) 
+- Select (bootstrap_role) 
+- Click (Update IAM role)
+
+
+- Create a cluster 
+###### I given name as mycluster. You can give any name.
+#####  Execute below command 
+
+```
+eksctl create cluster --name mycluster \
+                      --region us-east-1 \
+                      --node-type t2.small \
+```
+###### It will take 15 minutes time to execute. 
+###### Meanwhile if u go to AWS Management Console -> Services -> CloudFormation  (u can see # eksctl-mycluster-cluster - CREATE_IN_PROGRESS)
+###### Once its executed successfully u can able to see (eksctl-mycluster-cluster - CREATE_COMPLETE)
+###### go to AWS Management Console -> Services -> Elastic Kubernetes Service -> you can see (mycluster)  
+###### new instances with t2.small is created 
+
+Validate cluster by checking the nodes
+```
+kubectl get nodes
+```
+
+
+
+
+
+
