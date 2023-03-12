@@ -33,7 +33,7 @@ pipeline {
                 }
             }
         }
-        stage (" Docker Publish "){
+        stage(" Docker Publish "){
             steps {
                 script { 
                    docker.withRegistry(registry, 'Jfrog-token'){
@@ -41,6 +41,12 @@ pipeline {
                     }    
                 }
             }
+            
         }  
+        stage("Deployment"){
+            steps {
+                sh "./deploy.sh"
+            }
+        }
     }
 }
