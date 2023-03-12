@@ -2,6 +2,17 @@
 
 This repository contains a project where I’ve managed to create a Build & Deployment for a Node.js app.
 
+## Tools Covered
+- AWS 
+- Git & GitHub 
+- Jenkins 
+- npm
+- Jfrog
+- Docker
+- Kubernetes 
+
+
+## Step by Step to Build and Deploy Node.js app
 - Step 1 - Create an instance named Jenkins-Server and login to the server. Make sure you open port 8080. Install git, install Java, and Jenkins in /opt, and access Jenkins GUI.
 - Step 2 - Create an instance named Build-Server and login to the server. Install git, install Java, npm, docker, eksctl in /opt on build-server
 - Step 3 - Master - Slave Configuration 
@@ -568,7 +579,7 @@ password - (give your password)
 ```
 sudo cat /root/.docker/config.json 
 ```
-# Check the images
+##### Check images
 ```
 sudo docker images 
 ```
@@ -599,4 +610,5 @@ sudo docker images
 sudo docker images 
 ```
 ![image](https://user-images.githubusercontent.com/121741348/224545559-bebc40d4-de1d-4e19-83ee-847ff822c55b.png)
+
 
