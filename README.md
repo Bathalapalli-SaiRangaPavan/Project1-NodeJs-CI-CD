@@ -1,6 +1,6 @@
 # NodeJs-Project1-CI-CD
 
-This repository contains a project where I’ve managed to create a Build & Deployment for a Node.js app.
+This repository contains a project where I’ve managed to create a Build & Deployment for a Node.js app
 
 ## Tools Covered
 - AWS 
@@ -21,6 +21,8 @@ This repository contains a project where I’ve managed to create a Build & Depl
 - Step 6 - Configure nodejs in Global tool Configuration
 - Step 7 - Create a dedicated user to use for a Docker login in Jfrog 
 - Step 8 - Create a  Continuous Integration pipeline
+- Step 9 - Deployment in Kubernetes
+- Step 10 - Access Node.Js Application 
 
 ## Step 1 - Create an instance named Jenkins-Server and login to the server. Make sure you open port 8080. Install git, install Java, and Jenkins in /opt, and access Jenkins GUI.
 
@@ -610,5 +612,155 @@ sudo docker images
 sudo docker images 
 ```
 ![image](https://user-images.githubusercontent.com/121741348/224545559-bebc40d4-de1d-4e19-83ee-847ff822c55b.png)
+
+
+### Step 8 - Deployment in kubernetes 
+
+- Execute below command in Build Server using root as i installed docker in /opt 
+```
+cat ~/.docker/config.json | base64 -w0
+```
+- copy and paste in the secret.yaml - dockerconfigjson
+
+
+##### Create secret.yaml 
+
+```
+apiVersion: v1
+data:
+  .dockerconfigjson: ewoJImF1dGhzIjogewoJCSJic2FpcmFuZ2FwYXZhbi5qZnJvZy5pbyI6IHsKCQkJImF1dGgiOiAiWkc5amEyVnlhbVp5YjJjNlFXUnRhVzVBTVRJek5EVTIiCgkJfQoJfQp9
+kind: Secret
+metadata:
+  name: dockerjfrog
+type: kubernetes.io/dockerconfigjson
+```
+
+##### Create Deployment.yaml 
+
+```
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodejs-cicd-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nodejs-cicd
+  template:
+    metadata:
+      labels:
+        app: nodejs-cicd
+    spec:
+      imagePullSecrets:
+      - name: dockerjfrog 
+      containers:
+      - name:  nodejs-cicd
+        image: bsairangapavan.jfrog.io/nodebuild-docker/newimageversion:1.0.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3000
+```
+
+### Create Service.yaml 
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: nodejs-cicd-service
+spec:
+  type: NodePort
+  selector:
+    app: nodejs-cicd
+  ports:
+  - nodePort: 30086
+    port: 3000
+    targetPort: 3000 
+ ```
+ 
+ ### Create deploy.sh 
+ 
+ ```
+ kubectl apply -f service.yaml 
+ kubectl apply -f deployment.yaml 
+ kubectl apply -f service.yaml 
+ ```
+ ##### Give permission 
+ ```
+ chmod 777 deploy.sh
+ ```
+ ```
+ git update-index --chmod=+x deploy.sh
+ ```
+ ##### Stage 5 - Deployment 
+ 
+ ```
+ def registry = "https://bsairangapavan.jfrog.io/"
+def imageName = "bsairangapavan.jfrog.io/nodebuild-docker/newimageversion" 
+def version   = "1.0.0"
+pipeline {
+    agent{
+        node {
+            label "nodeslave"
+        }
+    }
+    tools {nodejs "node-js"}
+    stages{
+        stage ("clone the code"){
+            steps{
+                git branch: 'main', url: 'https://github.com/Bathalapalli-SaiRangaPavan/NodeJs-Project1-CI-CD.git'
+            }
+        }
+       
+        stage ("Build the code"){
+            steps{
+                sh "npm install"
+            }
+        }
+
+        stage ("Unit test"){
+            steps{
+                sh "npm test"
+            }
+        }
+        stage(" Docker Build ") {
+            steps {
+                script {
+                    app = docker.build(imageName+":"+version)
+                }
+            }
+        }
+        stage(" Docker Publish "){
+            steps {
+                script { 
+                   docker.withRegistry(registry, 'Jfrog-token'){
+                      app.push()
+                    }    
+                }
+            }
+            
+        }  
+        stage("Deployment"){
+            steps {
+                sh "./deploy.sh"
+            }
+        }
+    }
+}
+```
+
+![ci-cd](https://user-images.githubusercontent.com/121741348/224558955-04015aab-38ac-46f8-99fc-805f4d1bfcc5.png)
+
+##### Execute kubectl get all in build-server 
+
+![all](https://user-images.githubusercontent.com/121741348/224559106-5f8905c9-a1d6-4bc2-a670-34f5f53e28d4.png)
+
+- Make sure u open security group - port 30086 in any node 
+### Step 10 - Access Node.Js Application 
+- Browse - eksctlgeneratednodeip:30086 - when you do u can able to access below page
+
+![output](https://user-images.githubusercontent.com/121741348/224559363-6846d63d-4e10-44c2-9289-85ffecdc05eb.png)
+
 
 
